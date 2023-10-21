@@ -6,11 +6,17 @@ import {
 	GoogleAuthProvider,
 	onAuthStateChanged,
 	signInWithPopup,
+	signOut,
 } from 'firebase/auth';
 
 const Nav = () => {
+	const initialUserData = localStorage.getItem('userData')
+		? JSON.parse(localStorage.getItem('userData'))
+		: {};
+
 	const [show, handleShow] = useState(false);
 	const [searchValue, setSearchValue] = useState('');
+	const [userData, setUserData] = useState(initialUserData);
 	const { pathname } = useLocation();
 	const navigate = useNavigate();
 	const auth = getAuth();
@@ -26,7 +32,7 @@ const Nav = () => {
 				navigate('/');
 			}
 		});
-	}, [auth, navigate]);
+	}, [auth, navigate, pathname]);
 
 	useEffect(() => {
 		window.addEventListener('scroll', handleScroll);
@@ -45,14 +51,28 @@ const Nav = () => {
 
 	const handleChange = (e) => {
 		setSearchValue(e.target.value);
-		navigate(`/search?query=${searchValue}`);
+		navigate(`/search?query=${e.target.value}`);
 	};
 
 	const handleAuth = () => {
 		signInWithPopup(auth, provider)
-			.then((res) => {})
+			.then((res) => {
+				setUserData(res.user);
+				localStorage.setItem('userData', JSON.stringify(res.user));
+			})
 			.catch((error) => {
-				console.log(error);
+				alert(error.message);
+			});
+	};
+
+	const handleSignOut = () => {
+		signOut(auth)
+			.then(() => {
+				setUserData({});
+				navigate('/');
+			})
+			.catch((error) => {
+				console.log(error.message);
 			});
 	};
 
@@ -68,19 +88,67 @@ const Nav = () => {
 			{pathname === '/' ? (
 				<Login onClick={handleAuth}>Login</Login>
 			) : (
-				<Input
-					value={searchValue}
-					onChange={handleChange}
-					className="nav__input"
-					type="text"
-					placeholder="검색해주세요"
-				/>
+				<>
+					<Input
+						value={searchValue}
+						onChange={handleChange}
+						className="nav__input"
+						type="text"
+						placeholder="검색해주세요"
+					/>
+
+					<SignOut>
+						<UserImg
+							src={userData.photoURL}
+							alt={userData.displayName}
+						/>
+						<DropDown>
+							<span onClick={handleSignOut}>Sign Out</span>
+						</DropDown>
+					</SignOut>
+				</>
 			)}
 		</NavWrapper>
 	);
 };
 
 export default Nav;
+
+const DropDown = styled.div`
+	position: absolute;
+	top: 65px;
+	right: 0px;
+	background: rgb(19, 19, 19);
+	border: 1px solid rgba(151, 151, 151, 0.34);
+	border-radius: 4px;
+	box-shadow: rgba(0 0 0 /50%) 0px 0px 18px 0px;
+	padding: 10px;
+	font-size: 14px;
+	letter-spacing: 3px;
+	opacity: 0;
+`;
+
+const SignOut = styled.div`
+	position: relavite;
+	height: 48px;
+	width: 48px;
+	display: flex;
+	cursor: pointer;
+	align-items: center;
+	justify-content: center;
+	&:hover {
+		${DropDown} {
+			opacity: 1;
+			transition-duration: 0.5s;
+		}
+	}
+`;
+
+const UserImg = styled.img`
+	border-radius: 50%;
+	width: 100%;
+	height: 100%;
+`;
 
 const Login = styled.a`
 	background-color: rgba(0, 0, 0, 0.6);
